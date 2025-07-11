@@ -1,6 +1,5 @@
 # camera_check.py
 # 调用摄像头实时画面，按q键退出
-# 同济子豪兄 2024-5-13
 
 import cv2
 import numpy as np

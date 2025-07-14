@@ -1,16 +1,14 @@
 # camera_check.py
-# 调用摄像头实时画面，按q键退出
-
 import cv2
-import numpy as np
 
-cap = cv2.VideoCapture(0)
+# 把 0 换成 20（或 21）
+cap = cv2.VideoCapture('/dev/video20', cv2.CAP_V4L2)
 
-while(True):
+while True:
     ret, frame = cap.read()
-
-    # gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
-
+    if not ret:           # 避免空帧导致 imshow 崩溃
+        print("无法读取画面")
+        break
     cv2.imshow('frame', frame)
     if cv2.waitKey(1) & 0xFF == ord('q'):
         break

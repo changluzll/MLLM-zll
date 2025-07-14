@@ -10,7 +10,7 @@ def check_camera():
     开启摄像头，调用摄像头实时画面，按q键退出
     '''
     print('开启摄像头')
-    cap = cv2.VideoCapture(0)
+    cap = cv2.VideoCapture('/dev/video20', cv2.CAP_V4L2)
     
     while(True):
         ret, frame = cap.read()

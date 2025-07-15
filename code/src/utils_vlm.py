@@ -1,234 +1,174 @@
 # utils_vlm.py
-# 同济子豪兄 2024-5-22
+# 同济子豪兄 2024-05-22  2025-07-14 适配 MyCobot280 官方 API
 # 多模态大模型、可视化
 
 print('导入视觉大模型模块')
+
 import time
 import cv2
 import numpy as np
-from PIL import Image
-from PIL import ImageFont, ImageDraw
-# 导入中文字体，指定字号
+from PIL import Image, ImageFont, ImageDraw
+import openai
+import base64
+
+# 中文字体路径（请确保存在）
 font = ImageFont.truetype('asset/SimHei.ttf', 26)
 
-from API_KEY import *
-from utils_tts import *
+from API_KEY import *          # YI_KEY / Qwen_KEY
+from utils_tts import *        # tts / play_wav
+
 OUTPUT_VLM = ''
-# 系统提示词
+
+# ---------- 系统提示 ----------
 SYSTEM_PROMPT_CATCH = '''
 我即将说一句给机械臂的指令，你帮我从这句话中提取出起始物体和终止物体，并从这张图中分别找到这两个物体左上角和右下角的像素坐标，输出json数据结构。
-
-例如，如果我的指令是：请帮我把红色方块放在房子简笔画上。
-你输出这样的格式：
+示例：
 {
  "start":"红色方块",
  "start_xyxy":[[102,505],[324,860]],
  "end":"房子简笔画",
  "end_xyxy":[[300,150],[476,310]]
 }
-
 只回复json本身即可，不要回复其它内容
-
 我现在的指令是：
 '''
 
 SYSTEM_PROMPT_VQA = '''
 告诉我图片中每个物体的名称、类别和作用。每个物体用一句话描述。
-
-例如：
+示例：
 连花清瘟胶囊，药品，治疗感冒。
 盘子，生活物品，盛放东西。
 氯雷他定片，药品，治疗抗过敏。
-
 我现在的指令是：
 '''
 
+# ---------- Yi-Vision ----------
+def yi_vision_api(prompt='帮我把红色方块放在钢笔上', img_path='temp/vl_now.jpg', vlm_option=0):
+    if vlm_option == 0:
+        system = SYSTEM_PROMPT_CATCH
+    else:
+        system = SYSTEM_PROMPT_VQA
 
-# Yi-Vision调用函数
-import openai
-from openai import OpenAI
-import base64
-def yi_vision_api(PROMPT='帮我把红色方块放在钢笔上', img_path='temp/vl_now.jpg', vlm_option=0):
+    client = openai.OpenAI(api_key=YI_KEY, base_url="https://api.lingyiwanwu.com/v1")
 
-    '''
-    零一万物大模型开放平台，yi-vision视觉语言多模态大模型API
-    '''
-    if vlm_option==0:
-        SYSTEM_PROMPT=SYSTEM_PROMPT_CATCH
-    elif vlm_option==1:
-        SYSTEM_PROMPT=SYSTEM_PROMPT_VQA
-        
-    client = OpenAI(
-        api_key=YI_KEY,
-        base_url="https://api.lingyiwanwu.com/v1"
-    )
-    
-    # 编码为base64数据
-    with open(img_path, 'rb') as image_file:
-        image = 'data:image/jpeg;base64,' + base64.b64encode(image_file.read()).decode('utf-8')
-    
-    # 向大模型发起请求
-    completion = client.chat.completions.create(
-      model="yi-vision",
-      messages=[
-        {
-          "role": "user",
-          "content": [
-            {
-              "type": "text",
-              "text": SYSTEM_PROMPT + PROMPT
-            },
-            {
-              "type": "image_url",
-              "image_url": {
-                "url": image
-              }
-            }
-          ]
-        },
-      ]
-    )
-    
-    # 解析大模型返回结果
-    if vlm_option == 0: #定位任务
-        result = eval(completion.choices[0].message.content.strip())
-    elif vlm_option == 1: #视觉问答任务
-        result = completion.choices[0].message.content.strip()
-        print(result)
-        tts(result)  # 语音合成，导出wav音频文件
-        play_wav('temp/tts.wav')  # 播放语音合成音频文件S
-    print('    大模型调用成功！')
-    
-    return result
+    with open(img_path, 'rb') as f:
+        img_b64 = base64.b64encode(f.read()).decode()
 
-
-def QwenVL_api(PROMPT='帮我把红色方块放在钢笔上', img_path='temp/vl_now.jpg', vlm_option=0):
-    '''
-    通义千问QwenVL视觉语言多模态大模型API，模型列表请见：https://help.aliyun.com/zh/model-studio/getting-started/models?spm=0.0.0.i3#9f8890ce29g5u
-    '''
-    if vlm_option==0:
-        SYSTEM_PROMPT=SYSTEM_PROMPT_CATCH
-    elif vlm_option==1:
-        SYSTEM_PROMPT=SYSTEM_PROMPT_VQA
-        
-    client = OpenAI(
-        api_key=Qwen_KEY,
-        base_url="https://dashscope.aliyuncs.com/compatible-mode/v1"
-    )
-
-    # 编码为base64数据
-    with open(img_path, 'rb') as image_file:
-        image = 'data:image/jpeg;base64,' + base64.b64encode(image_file.read()).decode('utf-8')
-
-    # 向大模型发起请求
-    completion = client.chat.completions.create(
-        model="qwen-vl-max-2024-11-19",
+    res = client.chat.completions.create(
+        model="yi-vision",
         messages=[
             {
                 "role": "user",
                 "content": [
-                    {
-                        "type": "text",
-                        "text": SYSTEM_PROMPT + PROMPT
-                    },
-                    {
-                        "type": "image_url",
-                        "image_url": {
-                            "url": image
-                        }
-                    }
+                    {"type": "text", "text": system + prompt},
+                    {"type": "image_url", "image_url": {"url": f"data:image/jpeg;base64,{img_b64}"}}
                 ]
-            },
+            }
         ]
     )
 
-    # 解析大模型返回结果
-    if vlm_option == 0: #定位任务
-        result = eval(completion.choices[0].message.content.strip())
-    elif vlm_option == 1: #视觉问答任务
-        result = completion.choices[0].message.content.strip()
-        print(result)
-        tts(result)  # 语音合成，导出wav音频文件
-        play_wav('temp/tts.wav')  # 播放语音合成音频文件S
-    print('    大模型调用成功！')
-
-    return result
-
-def post_processing_viz(result, img_path, check=False):
-    
-    '''
-    视觉大模型输出结果后处理和可视化
-    check：是否需要人工看屏幕确认可视化成功，按键继续或退出
-    '''
-
-    # 后处理
-    img_bgr = cv2.imread(img_path)
-    img_h = img_bgr.shape[0]
-    img_w = img_bgr.shape[1]
-    # 缩放因子
-    FACTOR = 999
-    # 起点物体名称
-    START_NAME = result['start']
-    # 终点物体名称
-    END_NAME = result['end']
-    # 起点，左上角像素坐标
-    START_X_MIN = int(result['start_xyxy'][0][0] * img_w / FACTOR)
-    START_Y_MIN = int(result['start_xyxy'][0][1] * img_h / FACTOR)
-    # 起点，右下角像素坐标
-    START_X_MAX = int(result['start_xyxy'][1][0] * img_w / FACTOR)
-    START_Y_MAX = int(result['start_xyxy'][1][1] * img_h / FACTOR)
-    # 起点，中心点像素坐标
-    START_X_CENTER = int((START_X_MIN + START_X_MAX) / 2)
-    START_Y_CENTER = int((START_Y_MIN + START_Y_MAX) / 2)
-    # 终点，左上角像素坐标
-    END_X_MIN = int(result['end_xyxy'][0][0] * img_w / FACTOR)
-    END_Y_MIN = int(result['end_xyxy'][0][1] * img_h / FACTOR)
-    # 终点，右下角像素坐标
-    END_X_MAX = int(result['end_xyxy'][1][0] * img_w / FACTOR)
-    END_Y_MAX = int(result['end_xyxy'][1][1] * img_h / FACTOR)
-    # 终点，中心点像素坐标
-    END_X_CENTER = int((END_X_MIN + END_X_MAX) / 2)
-    END_Y_CENTER = int((END_Y_MIN + END_Y_MAX) / 2)
-    
-    # 可视化
-    # 画起点物体框
-    img_bgr = cv2.rectangle(img_bgr, (START_X_MIN, START_Y_MIN), (START_X_MAX, START_Y_MAX), [0, 0, 255], thickness=3)
-    # 画起点中心点
-    img_bgr = cv2.circle(img_bgr, [START_X_CENTER, START_Y_CENTER], 6, [0, 0, 255], thickness=-1)
-    # 画终点物体框
-    img_bgr = cv2.rectangle(img_bgr, (END_X_MIN, END_Y_MIN), (END_X_MAX, END_Y_MAX), [255, 0, 0], thickness=3)
-    # 画终点中心点
-    img_bgr = cv2.circle(img_bgr, [END_X_CENTER, END_Y_CENTER], 6, [255, 0, 0], thickness=-1)
-    # 写中文物体名称
-    img_rgb = cv2.cvtColor(img_bgr, cv2.COLOR_BGR2RGB) # BGR 转 RGB
-    img_pil = Image.fromarray(img_rgb) # array 转 pil
-    draw = ImageDraw.Draw(img_pil)
-    # 写起点物体中文名称
-    draw.text((START_X_MIN, START_Y_MIN-32), START_NAME, font=font, fill=(255, 0, 0, 1)) # 文字坐标，中文字符串，字体，rgba颜色
-    # 写终点物体中文名称
-    draw.text((END_X_MIN, END_Y_MIN-32), END_NAME, font=font, fill=(0, 0, 255, 1)) # 文字坐标，中文字符串，字体，rgba颜色
-    img_bgr = cv2.cvtColor(np.array(img_pil), cv2.COLOR_RGB2BGR) # RGB转BGR
-    # 保存可视化效果图
-    cv2.imwrite('temp/vl_now_viz.jpg', img_bgr)
-
-    formatted_time = time.strftime("%Y%m%d%H%M", time.localtime())
-    cv2.imwrite('visualizations/{}.jpg'.format(formatted_time), img_bgr)
-
-    # 在屏幕上展示可视化效果图
-    cv2.imshow('zihao_vlm', img_bgr) 
-
-    if check:
-        print('    请确认可视化成功，按c键继续，按q键退出')
-        while(True):
-            key = cv2.waitKey(10) & 0xFF
-            if key == ord('c'): # 按c键继续
-                break
-            if key == ord('q'): # 按q键退出
-                # exit()
-                cv2.destroyAllWindows()   # 关闭所有opencv窗口
-                raise NameError('按q退出')
+    result = res.choices[0].message.content.strip()
+    if vlm_option == 0:
+        return eval(result)
     else:
-        if cv2.waitKey(1) & 0xFF == None:
-            pass
+        print(result)
+        tts(result)
+        play_wav('temp/tts.wav')
+        return result
 
-    return START_X_CENTER, START_Y_CENTER, END_X_CENTER, END_Y_CENTER
+
+# ---------- Qwen-VL ----------
+def QwenVL_api(prompt='帮我把红色方块放在钢笔上', img_path='temp/vl_now.jpg', vlm_option=0):
+    if vlm_option == 0:
+        system = SYSTEM_PROMPT_CATCH
+    else:
+        system = SYSTEM_PROMPT_VQA
+
+    client = openai.OpenAI(api_key=Qwen_KEY, base_url="https://dashscope.aliyuncs.com/compatible-mode/v1")
+
+    with open(img_path, 'rb') as f:
+        img_b64 = base64.b64encode(f.read()).decode()
+
+    res = client.chat.completions.create(
+        model="qwen-vl-max-2025-04-08",          # 最新可用版本
+        messages=[
+            {
+                "role": "user",
+                "content": [
+                    {"type": "text", "text": system + prompt},
+                    {"type": "image_url", "image_url": {"url": f"data:image/jpeg;base64,{img_b64}"}}
+                ]
+            }
+        ]
+    )
+
+    result = res.choices[0].message.content.strip()
+    if vlm_option == 0:
+        return eval(result)
+    else:
+        print(result)
+        tts(result)
+        play_wav('temp/tts.wav')
+        return result
+
+
+# ---------- 可视化 ----------
+def post_processing_viz(result, img_path, check=False):
+    """
+    将 VLM 返回的 JSON 转为中心坐标并可视化
+    返回：START_X_CENTER, START_Y_CENTER, END_X_CENTER, END_Y_CENTER
+    """
+    img = cv2.imread(img_path)
+    h, w = img.shape[:2]
+    factor = 999  # 缩放因子（与旧版保持一致）
+
+    def scale(xy):
+        return [int(v * w / factor) if i % 2 == 0 else int(v * h / factor)
+                for i, v in enumerate(xy)]
+
+    # 起点
+    start_name = result['start']
+    sx_min, sy_min, sx_max, sy_max = scale(result['start_xyxy'][0] + result['start_xyxy'][1])
+    sx_c = (sx_min + sx_max) // 2
+    sy_c = (sy_min + sy_max) // 2
+
+    # 终点
+    end_name = result['end']
+    ex_min, ey_min, ex_max, ey_max = scale(result['end_xyxy'][0] + result['end_xyxy'][1])
+    ex_c = (ex_min + ex_max) // 2
+    ey_c = (ey_min + ey_max) // 2
+
+    # 画框
+    cv2.rectangle(img, (sx_min, sy_min), (sx_max, sy_max), (0, 0, 255), 3)
+    cv2.circle(img, (sx_c, sy_c), 6, (0, 0, 255), -1)
+    cv2.rectangle(img, (ex_min, ey_min), (ex_max, ey_max), (255, 0, 0), 3)
+    cv2.circle(img, (ex_c, ey_c), 6, (255, 0, 0), -1)
+
+    # 写字
+    img_rgb = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
+    pil = Image.fromarray(img_rgb)
+    draw = ImageDraw.Draw(pil)
+    draw.text((sx_min, sy_min - 32), start_name, font=font, fill=(255, 0, 0))
+    draw.text((ex_min, ey_min - 32), end_name, font=font, fill=(0, 0, 255))
+    img = cv2.cvtColor(np.array(pil), cv2.COLOR_RGB2BGR)
+
+    # 保存
+    os.makedirs('temp', exist_ok=True)
+    os.makedirs('visualizations', exist_ok=True)
+    cv2.imwrite('temp/vl_now_viz.jpg', img)
+    cv2.imwrite(f'visualizations/{time.strftime("%Y%m%d%H%M")}.jpg', img)
+
+    cv2.imshow('zihao_vlm', img)
+    if check:
+        print('请确认可视化成功，按 c 继续，按 q 退出')
+        while True:
+            key = cv2.waitKey(10) & 0xFF
+            if key == ord('c'):
+                break
+            if key == ord('q'):
+                cv2.destroyAllWindows()
+                raise KeyboardInterrupt('用户取消')
+    else:
+        cv2.waitKey(1)
+
+    return sx_c, sy_c, ex_c, ey_c

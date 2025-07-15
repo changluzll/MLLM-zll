@@ -159,16 +159,6 @@ def post_processing_viz(result, img_path, check=False):
     cv2.imwrite(f'visualizations/{time.strftime("%Y%m%d%H%M")}.jpg', img)
 
     cv2.imshow('zihao_vlm', img)
-    if check:
-        print('请确认可视化成功，按 c 继续，按 q 退出')
-        while True:
-            key = cv2.waitKey(10) & 0xFF
-            if key == ord('c'):
-                break
-            if key == ord('q'):
-                cv2.destroyAllWindows()
-                raise KeyboardInterrupt('用户取消')
-    else:
-        cv2.waitKey(1)
+
 
     return sx_c, sy_c, ex_c, ey_c

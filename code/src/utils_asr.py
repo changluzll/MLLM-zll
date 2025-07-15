@@ -15,7 +15,7 @@ from API_KEY import *
 # import sounddevice as sd
 # print(sd.query_devices())
 
-def record(MIC_INDEX=0, DURATION=5):
+def record(MIC_INDEX=1, DURATION=5):
     '''
     调用麦克风录音，需用arecord -l命令获取麦克风ID
     DURATION，录音时长

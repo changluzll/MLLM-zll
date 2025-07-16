@@ -101,7 +101,7 @@ def top_view_shot(check=False):
     # 获取摄像头，传入0表示获取系统默认摄像头
     cap = cv2.VideoCapture(20)
     # 打开cap
-    cap.open(0)
+    cap.open(20)
     time.sleep(1)
     success, img_bgr = cap.read()
 
@@ -123,22 +123,31 @@ def eye2hand(X_im=160, Y_im=120):
     '''
     输入目标点在图像中的像素坐标，转换为机械臂坐标
     '''
-    # 整理两个标定点的坐标
-    cali_1_im = [432, 341]  # 左下角，第一个标定点的像素坐标，要手动填！
-    cali_1_mc = [260, 26]  # 左下角，第一个标定点的机械臂坐标，要手动填！
-    cali_2_im = [234, 105]  # 右上角，第二个标定点的像素坐标
-    cali_2_mc = [163, 130]  # 右上角，第二个标定点的机械臂坐标，要手动填！
+    # 整理多个标定点的坐标
+    cali_points_im = np.array([
+        [202, 296] ,  # 左下角
+        [417, 314] ,  # 右上角
+        [212, 85],  # 中间点2
+        [426,98]   # 中间点3
+    ])  # 像素坐标，需要手动填！
 
-    X_cali_im = [cali_1_im[0], cali_2_im[0]]  # 像素坐标
-    X_cali_mc = [cali_1_mc[0], cali_2_mc[0]]  # 机械臂坐标
-    Y_cali_im = [cali_2_im[1], cali_1_im[1]]  # 像素坐标，先小后大
-    Y_cali_mc = [cali_2_mc[1], cali_1_mc[1]]  # 机械臂坐标，先大后小
+    cali_points_mc = np.array([
+        [174, 48] ,   # 左下角
+        [257, 52.1],  # 右上角
+        [170.6, 120.7] ,   # 中间点2
+        [251.7, 140.3]   # 中间点3
+    ])  # 机械臂坐标，需要手动填！
 
-    # X差值
-    X_mc = int(np.interp(X_im, X_cali_im, X_cali_mc))
+    # 使用多项式拟合
+    # X方向拟合
+    coeffs_X = np.polyfit(cali_points_im[:, 0], cali_points_mc[:, 0], deg=2)  # 二次多项式
+    poly_X = np.poly1d(coeffs_X)
+    X_mc = int(poly_X(X_im))
 
-    # Y差值
-    Y_mc = int(np.interp(Y_im, Y_cali_im, Y_cali_mc))
+    # Y方向拟合
+    coeffs_Y = np.polyfit(cali_points_im[:, 1], cali_points_mc[:, 1], deg=2)  # 二次多项式
+    poly_Y = np.poly1d(coeffs_Y)
+    Y_mc = int(poly_Y(Y_im))
 
     return X_mc, Y_mc
 

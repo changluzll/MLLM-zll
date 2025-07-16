@@ -55,7 +55,7 @@ def yi_vision_api(prompt='帮我把红色方块放在钢笔上', img_path='temp/
         img_b64 = base64.b64encode(f.read()).decode()
 
     res = client.chat.completions.create(
-        model="yi-vision",
+        model="yi-vision-v2",
         messages=[
             {
                 "role": "user",
@@ -90,7 +90,7 @@ def QwenVL_api(prompt='帮我把红色方块放在钢笔上', img_path='temp/vl_
         img_b64 = base64.b64encode(f.read()).decode()
 
     res = client.chat.completions.create(
-        model="qwen-vl-max-2025-04-08",          # 最新可用版本
+        model="qwen-vl-max",          # 最新可用版本
         messages=[
             {
                 "role": "user",
@@ -120,11 +120,10 @@ def post_processing_viz(result, img_path, check=False):
     """
     img = cv2.imread(img_path)
     h, w = img.shape[:2]
-    factor = 999  # 缩放因子（与旧版保持一致）
+    factor = 640  # 缩放因子（与旧版保持一致）
 
     def scale(xy):
-        return [int(v * w / factor) if i % 2 == 0 else int(v * h / factor)
-                for i, v in enumerate(xy)]
+        return xy
 
     # 起点
     start_name = result['start']

@@ -86,7 +86,7 @@ def single_joint_move(joint_index, angle):
 
 def move_to_top_view():
     print('移动至俯视姿态')
-    mc.send_angles([-62.13, 8.96, -87.71, -14.41, 2.54, -16.34], 10)
+    mc.send_angles([39.19, -4.39, -69.43, -10.63, 1.75, 80.77], 10)
     time.sleep(3)
 
 
@@ -97,12 +97,12 @@ def top_view_shot(check=False):
     '''
     print('    移动至俯视姿态')
     move_to_top_view()
-    time.sleep(1)
+    time.sleep(3)
     # 获取摄像头，传入0表示获取系统默认摄像头
     cap = cv2.VideoCapture(20)
     # 打开cap
     cap.open(0)
-    time.sleep(0.3)
+    time.sleep(1)
     success, img_bgr = cap.read()
 
     # 保存图像
@@ -124,10 +124,10 @@ def eye2hand(X_im=160, Y_im=120):
     输入目标点在图像中的像素坐标，转换为机械臂坐标
     '''
     # 整理两个标定点的坐标
-    cali_1_im = [130, 290]  # 左下角，第一个标定点的像素坐标，要手动填！
-    cali_1_mc = [-21.8, -197.4]  # 左下角，第一个标定点的机械臂坐标，要手动填！
-    cali_2_im = [640, 0]  # 右上角，第二个标定点的像素坐标
-    cali_2_mc = [215, -59.1]  # 右上角，第二个标定点的机械臂坐标，要手动填！
+    cali_1_im = [432, 341]  # 左下角，第一个标定点的像素坐标，要手动填！
+    cali_1_mc = [260, 26]  # 左下角，第一个标定点的机械臂坐标，要手动填！
+    cali_2_im = [234, 105]  # 右上角，第二个标定点的像素坐标
+    cali_2_mc = [163, 130]  # 右上角，第二个标定点的机械臂坐标，要手动填！
 
     X_cali_im = [cali_1_im[0], cali_2_im[0]]  # 像素坐标
     X_cali_mc = [cali_1_mc[0], cali_2_mc[0]]  # 机械臂坐标

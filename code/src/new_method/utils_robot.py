@@ -10,7 +10,8 @@ import cv2
 import numpy as np
 import time
 from utils_pump import *
-
+from camera_detect import camera_detect
+import json
 # 连接机械臂
 mc = MyCobot280(PI_PORT, PI_BAUD)
 # 设置运动模式为队列模式(0)
@@ -118,38 +119,44 @@ def top_view_shot(check=False):
     # 关闭摄像头
     cap.release()
 
+# 初始化 camera_detect 实例（只需一次）
+camera_params = np.load("camera_params.npz")
+mtx, dist = camera_params["mtx"], camera_params["dist"]
+cd = camera_detect(camera_id=0, marker_size=32, mtx=mtx, dist=dist)
 
-def eye2hand(X_im=160, Y_im=120):
+def eye2hand(X_im=320, Y_im=240):
     '''
-    输入目标点在图像中的像素坐标，转换为机械臂坐标
+    输入目标点在图像中的像素坐标，返回机械臂坐标（基于STag码+手眼矩阵）
+    注意：该函数默认相机已对准目标，且目标为STag码编号0
     '''
-    # 整理多个标定点的坐标
-    cali_points_im = np.array([
-        [208, 201] ,  # 左下角
-        [342, 138] ,  # 右上角
-        [210, 53],  # 中间点2
-        [359, 257]   # 中间点3
-    ])  # 像素坐标，需要手动填！
+    # 获取当前帧
+    cd.camera.update_frame()
+    frame = cd.camera.color_frame()
+    if frame is None:
+        print("❌ 摄像头未获取到图像")
+        return None, None
 
-    cali_points_mc = np.array([
-        [164.3,89.4] ,   # 左下角
-        [221.4, 136.7],  # 右上角
-        [159.6, 161.6] ,   # 中间点2
-        [235.5,73.4]   # 中间点3
-    ])  # 机械臂坐标，需要手动填！
+    # 识别STag码
+    marker_pos_pack, ids = cd.stag_identify()
+    if len(marker_pos_pack) == 0 or ids is None or 0 not in ids:
+        print("❌ 未识别到STag码编号0")
+        return None, None
 
-    # 使用多项式拟合
-    # X方向拟合
-    coeffs_X = np.polyfit(cali_points_im[:, 0], cali_points_mc[:, 0], deg=2)  # 二次多项式
-    poly_X = np.poly1d(coeffs_X)
-    X_mc = int(poly_X(X_im))
+    # 获取机械臂当前坐标
+    current_coords = mc.get_coords()
+    while current_coords is None:
+        current_coords = mc.get_coords()
 
-    # Y方向拟合
-    coeffs_Y = np.polyfit(cali_points_im[:, 1], cali_points_mc[:, 1], deg=2)  # 二次多项式
-    poly_Y = np.poly1d(coeffs_Y)
-    Y_mc = int(poly_Y(Y_im))
+    # 使用手眼矩阵转换坐标
+    cur_coords = np.array(current_coords.copy())
+    cur_coords[-3:] *= np.pi / 180  # 转为弧度
+    fact_bcl = cd.Eyes_in_hand(cur_coords, marker_pos_pack, cd.EyesInHand_matrix)
 
+    # 返回机械臂坐标（X, Y）
+    X_mc = int(fact_bcl[0])
+    Y_mc = int(fact_bcl[1])
     return X_mc, Y_mc
+
 
 
 def pump_move(mc, XY_START=[230, -50], HEIGHT_START=90, XY_END=[100, 220], HEIGHT_END=100, HEIGHT_SAFE=220):

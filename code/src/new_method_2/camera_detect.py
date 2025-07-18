@@ -366,7 +366,7 @@ class camera_detect:
             _, ids = self.stag_identify()
             if ids[0] == 0:
                 self.camera.update_frame()  # 刷新相机界面
-                frame = self.camera.color_frame()  # 获取当前帧
+                frame = self.camera.color_frame()  # 获取当前
                 cv2.imshow("Enter any key to exit", frame)
 
                 target_coords, _ = self.stag_robot_identify(ml)

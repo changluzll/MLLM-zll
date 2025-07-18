@@ -11,7 +11,6 @@ import numpy as np
 import time
 from utils_pump import *
 from camera_detect import camera_detect
-import json
 # 连接机械臂
 mc = MyCobot280(PI_PORT, PI_BAUD)
 # 设置运动模式为队列模式(0)
@@ -25,11 +24,9 @@ def back_zero():
     mc.send_angles([0, 0, 0, 0, 0, 0], 40)
     time.sleep(3)
 
-
 def relax_arms():
     print('放松机械臂关节')
     mc.release_all_servos()
-
 
 def head_shake():
     # 左右摆头
@@ -42,7 +39,6 @@ def head_shake():
         time.sleep(0.5)
     mc.send_angles([0, 0, 0, 0, 0, 0], 40)
     time.sleep(2)
-
 
 def head_dance():
     # 跳舞
@@ -59,7 +55,6 @@ def head_dance():
         time.sleep(1)
         mc.send_angles([0, 0, 0, 0, 0, 0], 80)
 
-
 def head_nod():
     # 点头
     mc.send_angles([0.87, (-50.44), 47.28, 0.35, (-0.43), (-0.26)], 70)
@@ -72,24 +67,20 @@ def head_nod():
         time.sleep(0.5)
     mc.send_angles([0.87, (-50.44), 47.28, 0.35, (-0.43), (-0.26)], 70)
 
-
 def move_to_coords(X=150, Y=-130, HEIGHT_SAFE=230):
     print('移动至指定坐标：X {} Y {}'.format(X, Y))
     mc.send_coords([X, Y, HEIGHT_SAFE, 0, 180, 90], 20, 0)
     time.sleep(4)
-
 
 def single_joint_move(joint_index, angle):
     print('关节 {} 旋转至 {} 度'.format(joint_index, angle))
     mc.send_angle(joint_index, angle, 40)
     time.sleep(2)
 
-
 def move_to_top_view():
     print('移动至俯视姿态')
     mc.send_angles([39.19, -4.39, -69.43, -10.63, 1.75, 80.77], 10)
     time.sleep(3)
-
 
 def top_view_shot(check=False):
     '''
@@ -119,27 +110,35 @@ def top_view_shot(check=False):
     # 关闭摄像头
     cap.release()
 
-# 初始化 camera_detect 实例（只需一次）
-camera_params = np.load("camera_params.npz")
-mtx, dist = camera_params["mtx"], camera_params["dist"]
-cd = camera_detect(camera_id=0, marker_size=32, mtx=mtx, dist=dist)
-
-def eye2hand(X_im=320, Y_im=240):
+def eye2hand(X_im=160, Y_im=120):
     '''
-    输入目标点在图像中的像素坐标，返回机械臂坐标（基于STag码+手眼矩阵）
-    注意：该函数默认相机已对准目标，且目标为STag码编号0
+    输入目标点在图像中的像素坐标，转换为机械臂坐标
     '''
+    # 初始化 camera_detect
+    camera_params = np.load("camera_params.npz")
+    mtx, dist = camera_params["mtx"], camera_params["dist"]
+    cd = camera_detect(20, 100, mtx, dist)
+    while True:
+        coords = mc.get_coords()
+        if isinstance(coords, list) and len(coords) == 6:
+            break
+        time.sleep(0.5)
     # 获取当前帧
-    cd.camera.update_frame()
-    frame = cd.camera.color_frame()
+    frame = cd.get_frame()
     if frame is None:
-        print("❌ 摄像头未获取到图像")
+        print("Failed to capture frame")
         return None, None
 
-    # 识别STag码
-    marker_pos_pack, ids = cd.stag_identify()
-    if len(marker_pos_pack) == 0 or ids is None or 0 not in ids:
-        print("❌ 未识别到STag码编号0")
+    # 检测 ArUco 标记
+    corners, ids = cd.detect_aruco(frame)
+    if ids is None:
+        print("No ArUco marker detected")
+        return None, None
+
+    # 计算目标坐标
+    target_coords = cd.calc_markers_base_position(corners, ids)
+    if target_coords is None:
+        print("Failed to calculate target coordinates")
         return None, None
 
     # 获取机械臂当前坐标
@@ -150,16 +149,19 @@ def eye2hand(X_im=320, Y_im=240):
     # 使用手眼矩阵转换坐标
     cur_coords = np.array(current_coords.copy())
     cur_coords[-3:] *= np.pi / 180  # 转为弧度
-    fact_bcl = cd.Eyes_in_hand(cur_coords, marker_pos_pack, cd.EyesInHand_matrix)
+    fact_bcl = cd.Eyes_in_hand(cur_coords, target_coords, cd.EyesInHand_matrix)
 
     # 返回机械臂坐标（X, Y）
     X_mc = int(fact_bcl[0])
     Y_mc = int(fact_bcl[1])
     return X_mc, Y_mc
 
-
-
-def pump_move(mc, XY_START=[230, -50], HEIGHT_START=90, XY_END=[100, 220], HEIGHT_END=100, HEIGHT_SAFE=220):
+def pump_move(mc,
+              XY_START=[230, -50],
+              HEIGHT_START=90,
+              XY_END=[100, 220],
+              HEIGHT_END=90,
+              HEIGHT_SAFE=220):
     '''
     用吸泵，将物体从起点吸取移动至终点
 

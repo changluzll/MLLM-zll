@@ -123,36 +123,34 @@ def eye2hand(X_im=160, Y_im=120):
     '''
     输入目标点在图像中的像素坐标，转换为机械臂坐标
     '''
-    # 整理多个标定点的坐标
-    cali_points_im = np.array([
-        [208, 201] ,  # 左下角
-        [342, 138] ,  # 右上角
-        [210, 53],  # 中间点2
-        [359, 257]   # 中间点3
-    ])  # 像素坐标，需要手动填！
 
-    cali_points_mc = np.array([
-        [164.3,89.4] ,   # 左下角
-        [221.4, 136.7],  # 右上角
-        [159.6, 161.6] ,   # 中间点2
-        [235.5,73.4]   # 中间点3
-    ])  # 机械臂坐标，需要手动填！
+    # 整理两个标定点的坐标
+    cali_1_im = [234, 74]  # 左下角，第一个标定点的像素坐标，要手动填！
+    cali_1_mc = [152, 76]  # 左下角，第一个标定点的机械臂坐标，要手动填！
+    cali_2_im = [370, 287]  # 右上角，第二个标定点的像素坐标
+    cali_2_mc = [245, 62]  # 右上角，第二个标定点的机械臂坐标，要手动填！
 
-    # 使用多项式拟合
-    # X方向拟合
-    coeffs_X = np.polyfit(cali_points_im[:, 0], cali_points_mc[:, 0], deg=2)  # 二次多项式
-    poly_X = np.poly1d(coeffs_X)
-    X_mc = int(poly_X(X_im))
+    X_cali_im = [cali_1_im[0], cali_2_im[0]]  # 像素坐标
+    X_cali_mc = [cali_1_mc[0], cali_2_mc[0]]  # 机械臂坐标
+    Y_cali_im = [cali_2_im[1], cali_1_im[1]]  # 像素坐标，先小后大
+    Y_cali_mc = [cali_2_mc[1], cali_1_mc[1]]  # 机械臂坐标，先大后小
 
-    # Y方向拟合
-    coeffs_Y = np.polyfit(cali_points_im[:, 1], cali_points_mc[:, 1], deg=2)  # 二次多项式
-    poly_Y = np.poly1d(coeffs_Y)
-    Y_mc = int(poly_Y(Y_im))
+    # X差值
+    X_mc = int(np.interp(X_im, X_cali_im, X_cali_mc))
+
+    # Y差值
+    Y_mc = int(np.interp(Y_im, Y_cali_im, Y_cali_mc))
 
     return X_mc, Y_mc
 
 
-def pump_move(mc, XY_START=[230, -50], HEIGHT_START=90, XY_END=[100, 220], HEIGHT_END=100, HEIGHT_SAFE=220):
+def pump_move(mc,
+              XY_START=[230, -50],
+              HEIGHT_START=90,
+              XY_END=[100, 220],
+              HEIGHT_END=90,
+              HEIGHT_SAFE=220):
+    ...
     '''
     用吸泵，将物体从起点吸取移动至终点
 

@@ -1,10 +1,9 @@
 # agent_go.py
-# 同济子豪兄 2024-5-27
 # 看懂“图像”、听懂“人话”、指哪打哪的机械臂
 # 机械臂+大模型+多模态+语音识别=具身智能体Agent
 
 print('\n听得懂人话、看得懂图像、拎得清动作的具身智能机械臂！')
-print('同济子豪兄 2024-5-27 \n')
+print('中科（梁溪）人工智能创新中心 2025-7-22 \n')
 
 # 导入常用函数
 from utils_asr import *             # 录音+语音识别
@@ -22,7 +21,7 @@ from utils_tts import *             # 语音合成模块
 # print('播放欢迎词')
 pump_off()
 # back_zero()
-play_wav('asset/welcome.wav')
+#play_wav('asset/welcome.wav')
 
 message=[]
 message.append({"role":"system","content":AGENT_SYS_PROMPT})

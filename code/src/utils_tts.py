@@ -12,7 +12,7 @@ import wave
 
 tts_ab = appbuilder.TTS()
 
-def tts(TEXT='我是同济子豪兄的麒麟臂', tts_wav_path = 'temp/tts.wav'):
+def tts(TEXT='我是多模态六轴机械臂', tts_wav_path = 'temp/tts.wav'):
     '''
     语音合成TTS，生成wav音频文件
     '''

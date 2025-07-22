@@ -149,7 +149,7 @@ def post_processing_viz(result, img_path, check=False):
     """
     img = cv2.imread(img_path)
     h, w = img.shape[:2]
-    factor = 640  # 缩放因子（与旧版保持一致）
+    factor = 999  # 缩放因子（与旧版保持一致）
 
     def scale(xy):
         return xy

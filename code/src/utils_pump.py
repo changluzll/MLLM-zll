@@ -9,8 +9,8 @@ import time
 # 显式指定 GPIO 设备（必须使用lgpio驱动）
 Device.pin_factory = LGPIOFactory(chip=0)
 
-pump = LED(71)   # 气泵
-valve = LED(72)  # 默认关闭（高电平）
+pump = LED(46)   # 气泵
+valve = LED(37)  # 默认关闭（高电平）
 def pump_on():
     '''
     开启吸泵（关闭泄气阀门）

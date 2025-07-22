@@ -97,7 +97,7 @@ def top_view_shot(check=False):
     '''
     print('    移动至俯视姿态')
     move_to_top_view()
-    time.sleep(3)
+    time.sleep(1.5)
     # 获取摄像头，传入0表示获取系统默认摄像头
     cap = cv2.VideoCapture(20)
     # 打开cap
@@ -111,9 +111,7 @@ def top_view_shot(check=False):
 
     # 屏幕上展示图像
     cv2.destroyAllWindows()  # 关闭所有opencv窗口
-    cv2.imshow('zihao_vlm', img_bgr)
-
-    time.sleep(2)
+    cv2.imshow('waiic_vlm', img_bgr)
 
     # 关闭摄像头
     cap.release()
@@ -175,22 +173,22 @@ def pump_move(mc,
     # 吸泵向下吸取物体
     print('    吸泵向下吸取物体')
     mc.send_coords([XY_START[0], XY_START[1], HEIGHT_START, 0, 180, 90], 15, 0)
-    time.sleep(4)
+    time.sleep(2)
 
     # 升起物体
     print('    升起物体')
     mc.send_coords([XY_START[0], XY_START[1], HEIGHT_SAFE, 0, 180, 90], 15, 0)
-    time.sleep(4)
+    time.sleep(1)
 
     # 搬运物体至目标上方
     print('    搬运物体至目标上方')
     mc.send_coords([XY_END[0], XY_END[1], HEIGHT_SAFE, 0, 180, 90], 15, 0)
-    time.sleep(4)
+    time.sleep(1)
 
     # 向下放下物体
     print('    向下放下物体')
     mc.send_coords([XY_END[0], XY_END[1], HEIGHT_END, 0, 180, 90], 20, 0)
-    time.sleep(3)
+    time.sleep(1)
 
     # 关闭吸泵
     pump_off()
@@ -198,4 +196,4 @@ def pump_move(mc,
     # 机械臂归零
     print('    机械臂归零')
     mc.send_angles([0, 0, 0, 0, 0, 0], 40)
-    time.sleep(3)
+    time.sleep(1)

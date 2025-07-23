@@ -8,7 +8,7 @@ from utils_vlm import *
 import time
 
 HEIGHT_SAFE = 220          # 搬运安全高度
-HEIGHT_START = 95        # 起点高度
+HEIGHT_START = 85        # 起点高度
 HEIGHT_END   = 130         # 终点高度
 
 def vlm_move(PROMPT='帮我把绿色方块放在小猪佩奇上', input_way='keyboard'):

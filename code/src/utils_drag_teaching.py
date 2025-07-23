@@ -118,7 +118,7 @@ class TeachingTest(Helper):
     def print_menu(self):
         print(
             """\
-        \r 拖动示教 同济子豪兄
+        \r 拖动示教 中科多模态六轴机械臂
         \r q: 退出
         \r r: 开始录制动作
         \r c: 停止录制动作
@@ -136,3 +136,16 @@ class TeachingTest(Helper):
         while True:
             with Raw(sys.stdin):
                 key = sys.stdin
+
+
+    def drag_teach():
+        print('机械臂归零')
+        mc.send_angles([0, 0, 0, 0, 0, 0], 40)
+        time.sleep(3)
+
+        recorder = TeachingTest(mc)
+        recorder.start()
+
+        print('机械臂归零')
+        mc.send_angles([0, 0, 0, 0, 0, 0], 40)
+        time.sleep(3)

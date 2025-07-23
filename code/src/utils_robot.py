@@ -123,10 +123,10 @@ def eye2hand(X_im=160, Y_im=120):
     '''
 
     # 整理两个标定点的坐标
-    cali_1_im = [234, 74]  # 左下角，第一个标定点的像素坐标，要手动填！
-    cali_1_mc = [152, 76]  # 左下角，第一个标定点的机械臂坐标，要手动填！
-    cali_2_im = [370, 287]  # 右上角，第二个标定点的像素坐标   `
-    cali_2_mc = [245, 62]  # 右上角，第二个标定点的机械臂坐标，要手动填！
+    cali_1_im = [138,339]  # 左下角，第一个标定点的像素坐标，要手动填！
+    cali_1_mc = [135.5,20.6]  # 左下角，第一个标定点的机械臂坐标，要手动填！
+    cali_2_im = [369,72]  # 右上角，第二个标定点的像素坐标   `
+    cali_2_mc = [231.7,167.2]  # 右上角，第二个标定点的机械臂坐标，要手动填！
 
     X_cali_im = [cali_1_im[0], cali_2_im[0]]  # 像素坐标
     X_cali_mc = [cali_1_mc[0], cali_2_mc[0]]  # 机械臂坐标
@@ -146,7 +146,7 @@ def pump_move(mc,
               XY_START=[230, -50],
               HEIGHT_START=90,
               XY_END=[100, 220],
-              HEIGHT_END=90,
+              HEIGHT_END=120,
               HEIGHT_SAFE=220):
     ...
     '''
@@ -172,23 +172,24 @@ def pump_move(mc,
 
     # 吸泵向下吸取物体
     print('    吸泵向下吸取物体')
-    mc.send_coords([XY_START[0], XY_START[1], HEIGHT_START, 0, 180, 90], 15, 0)
-    time.sleep(2)
+    #mc.send_coords([XY_START[0], XY_START[1], HEIGHT_START, 0, 180, 90], 15, 0)
+    mc.send_coords([XY_START[0], XY_START[1], 85, 0, 180, 90], 15, 0)
+    time.sleep(3)
 
     # 升起物体
     print('    升起物体')
-    mc.send_coords([XY_START[0], XY_START[1], HEIGHT_SAFE, 0, 180, 90], 15, 0)
-    time.sleep(1)
+    mc.send_coords([XY_START[0], XY_START[1], HEIGHT_SAFE, 0, 180, 90], 20, 0)
+    time.sleep(4)
 
     # 搬运物体至目标上方
     print('    搬运物体至目标上方')
-    mc.send_coords([XY_END[0], XY_END[1], HEIGHT_SAFE, 0, 180, 90], 15, 0)
-    time.sleep(1)
+    mc.send_coords([XY_END[0], XY_END[1], HEIGHT_SAFE, 0, 180, 90], 20, 0)
+    time.sleep(3.5)
 
     # 向下放下物体
     print('    向下放下物体')
     mc.send_coords([XY_END[0], XY_END[1], HEIGHT_END, 0, 180, 90], 20, 0)
-    time.sleep(1)
+    time.sleep(3)
 
     # 关闭吸泵
     pump_off()

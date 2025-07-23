@@ -7,8 +7,8 @@ import time
 from marker_utils import *
 from scipy.linalg import svd
 from pymycobot import *
-
-mc = MyCobot280("COM32")  # 需要手动设置端口及型号
+from pymycobot import PI_PORT, PI_BAUD
+mc = MyCobot280(PI_PORT, PI_BAUD) # 需要手动设置端口及型号
 # mc = MyCobot320("COM32")  # 需要手动设置端口及型号
 type = mc.get_system_version()
 offset_j5 = 0
@@ -366,7 +366,7 @@ class camera_detect:
             _, ids = self.stag_identify()
             if ids[0] == 0:
                 self.camera.update_frame()  # 刷新相机界面
-                frame = self.camera.color_frame()  # 获取当前
+                frame = self.camera.color_frame()  # 获取当前帧
                 cv2.imshow("Enter any key to exit", frame)
 
                 target_coords, _ = self.stag_robot_identify(ml)

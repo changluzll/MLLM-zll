@@ -25,22 +25,6 @@ def extract_ordered_line_coordinates(image_path, output_json_path, num_points=50
     # 提取轮廓上的点
     points = max_contour.reshape(-1, 2)
 
-    # 找到起点和终点（在图像边界上的点）
-    def is_on_edge(point, width, height):
-        return point[0] == 0 or point[0] == width - 1 or point[1] == 0 or point[1] == height - 1
-
-    height, width = binary.shape
-
-    # 找到所有在边界上的点
-    edge_points = [point for point in points if is_on_edge(point, width, height)]
-
-    if len(edge_points) < 2:
-        raise ValueError("未找到足够的边界点！")
-
-    # 假设第一个和最后一个边界点是起点和终点
-    start_point = edge_points[0]
-    end_point = edge_points[-1]
-
     # 沿轮廓等距采样
     def interpolate_points(points, num_points):
         distances = np.sqrt(np.sum(np.diff(points, axis=0)**2, axis=1))
@@ -66,11 +50,14 @@ def extract_ordered_line_coordinates(image_path, output_json_path, num_points=50
 
     ordered_points = interpolate_points(points, num_points)
 
+    # 获取图像尺寸
+    height, width = binary.shape
+
     # 创建JSON输出
     output = {
         "seam_path": [{"x": int(point[0]), "y": int(point[1])} for point in ordered_points],
-        "start_point": {"x": int(start_point[0]), "y": int(start_point[1])},
-        "end_point": {"x": int(end_point[0]), "y": int(end_point[1])},
+        "start_point": {"x": int(ordered_points[0][0]), "y": int(ordered_points[0][1])},
+        "end_point": {"x": int(ordered_points[-1][0]), "y": int(ordered_points[-1][1])},
         "image_dimensions": {"width": width, "height": height},
         "points_count": num_points
     }
@@ -82,6 +69,6 @@ def extract_ordered_line_coordinates(image_path, output_json_path, num_points=50
     print(f"坐标已保存到 {output_json_path}")
 
 # 示例用法
-image_path = "path_to_your_image.png"  # 替换为你的图像路径
+image_path = "pic2.png"  # 替换为你的图像路径
 output_json_path = "line_coordinates.json"  # 输出的JSON文件路径
 extract_ordered_line_coordinates(image_path, output_json_path)

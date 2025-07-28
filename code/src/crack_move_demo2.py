@@ -7,8 +7,9 @@ import math
 from utils_robot import *  # 导入机械臂控制函数
 from utils_crack_upload import *
 
-def extract_ordered_line_coordinates(image_path, output_json_path, num_points=50):
-    """从分割图像中提取有序的裂纹点坐标"""
+
+def extract_ordered_line_coordinates(image_path, output_json_path, num_points=50, visualize=True):
+    """从分割图像中提取有序的裂纹点坐标，并可选进行可视化"""
     # 直接从本地读取图片文件
     if not os.path.exists(image_path):
         raise FileNotFoundError(f"图片文件 {image_path} 不存在！")
@@ -81,24 +82,32 @@ def extract_ordered_line_coordinates(image_path, output_json_path, num_points=50
     def sort_points(points, start, end):
         """对点进行排序，从起点开始，沿着线条到终点"""
         # 计算每个点到起点的距离
-        distances = np.linalg.norm(points - start, axis=1)
+        distances_to_start = np.linalg.norm(points - start, axis=1)
 
-        # 按距离排序
-        sorted_indices = np.argsort(distances)
-        sorted_points = points[sorted_indices]
+        # 计算每个点到终点的距离
+        distances_to_end = np.linalg.norm(points - end, axis=1)
 
-        # 确保起点是第一个点
-        start_idx = np.argmin(np.linalg.norm(sorted_points - start, axis=1))
-        if start_idx > 0:
-            sorted_points = np.roll(sorted_points, -start_idx, axis=0)
+        # 找到起点和终点在点集中的索引
+        start_idx = np.argmin(distances_to_start)
+        end_idx = np.argmin(distances_to_end)
 
-        # 确保终点是最后一个点
-        end_idx = np.argmin(np.linalg.norm(sorted_points - end, axis=1))
-        if end_idx < len(sorted_points) - 1:
-            # 如果终点不在最后，反转后半部分点
+        # 确保起点索引小于终点索引
+        if start_idx > end_idx:
+            # 如果起点在终点之后，反转整个点集
+            points = np.flip(points, axis=0)
+            # 重新计算索引
+            start_idx = len(points) - 1 - start_idx
+            end_idx = len(points) - 1 - end_idx
+
+        # 创建从起点到终点的连续路径
+        if start_idx < end_idx:
+            # 如果起点在终点之前，直接取两点之间的点
+            sorted_points = points[start_idx:end_idx + 1]
+        else:
+            # 如果起点在终点之后（理论上不会发生，但保留处理）
             sorted_points = np.concatenate([
-                sorted_points[:end_idx + 1],
-                np.flip(sorted_points[end_idx + 1:], axis=0)
+                points[start_idx:],
+                points[:end_idx + 1]
             ])
 
         return sorted_points
@@ -106,13 +115,18 @@ def extract_ordered_line_coordinates(image_path, output_json_path, num_points=50
     # 应用排序算法
     sorted_points = sort_points(ordered_points, start_point, end_point)
 
+    # 确保起点和终点不重合
+    if np.array_equal(sorted_points[0], sorted_points[-1]):
+        # 如果起点和终点重合，移除最后一个点
+        sorted_points = sorted_points[:-1]
+
     # 创建JSON输出
     output = {
         "seam_path": [{"x": int(point[0]), "y": int(point[1])} for point in sorted_points],
         "start_point": {"x": int(start_point[0]), "y": int(start_point[1])},
         "end_point": {"x": int(end_point[0]), "y": int(end_point[1])},
         "image_dimensions": {"width": width, "height": height},
-        "points_count": num_points
+        "points_count": len(sorted_points)  # 更新为实际点数
     }
 
     # 确保输出目录存在
@@ -124,7 +138,49 @@ def extract_ordered_line_coordinates(image_path, output_json_path, num_points=50
 
     print(f"裂纹坐标已成功保存到 {output_json_path}")
     print(f"起点: ({start_point[0]}, {start_point[1]}), 终点: ({end_point[0]}, {end_point[1]})")
-    print(f"共 {num_points} 个有序点")
+    print(f"共 {len(sorted_points)} 个有序点")
+
+    # 可视化处理 - 将点坐标标注在图像上
+    if visualize:
+        # 创建可视化图像
+        # 使用原始分割图像作为背景
+        visual_image = cv2.cvtColor(image, cv2.COLOR_BGRA2BGR)
+
+        # 绘制裂纹轮廓
+        contour_points = np.array([(point[0], point[1]) for point in sorted_points], dtype=np.int32)
+        cv2.polylines(visual_image, [contour_points], isClosed=False, color=(0, 255, 0), thickness=2)
+
+        # 绘制起点和终点
+        cv2.circle(visual_image, (start_point[0], start_point[1]), 8, (0, 0, 255), -1)  # 红色起点
+        cv2.circle(visual_image, (end_point[0], end_point[1]), 8, (255, 0, 0), -1)  # 蓝色终点
+
+        # 绘制所有点
+        for i, point in enumerate(sorted_points):
+            x, y = int(point[0]), int(point[1])
+            # 绘制点
+            cv2.circle(visual_image, (x, y), 3, (255, 0, 255), -1)  # 紫色点
+
+            # 标注点序号
+            cv2.putText(visual_image, str(i + 1), (x + 5, y - 5),
+                        cv2.FONT_HERSHEY_SIMPLEX, 0.4, (255, 255, 255), 1)
+
+        # 添加图例
+        cv2.putText(visual_image, "Start", (start_point[0] + 10, start_point[1] - 10),
+                    cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 0, 255), 1)
+        cv2.putText(visual_image, "End", (end_point[0] + 10, end_point[1] - 10),
+                    cv2.FONT_HERSHEY_SIMPLEX, 0.5, (255, 0, 0), 1)
+        cv2.putText(visual_image, f"Points: {len(sorted_points)}", (10, 30),
+                    cv2.FONT_HERSHEY_SIMPLEX, 0.7, (255, 255, 255), 2)
+
+        # 保存可视化图像
+        visual_path = output_json_path.replace(".json", "_visual.png")
+        cv2.imwrite(visual_path, visual_image)
+        print(f"可视化图像已保存至: {visual_path}")
+
+        # 显示可视化图像（可选）
+        cv2.imshow("Crack Visualization", visual_image)
+        cv2.waitKey(5000)  # 显示5秒
+        cv2.destroyAllWindows()
 
     return output
 
@@ -220,24 +276,31 @@ if __name__ == "__main__":
         # 屏幕上展示图像
         cv2.destroyAllWindows()  # 关闭所有opencv窗口
         cv2.imshow('waiic_crack', img_bgr)
+        cv2.waitKey(1000)  # 显示1秒
+        cv2.destroyAllWindows()
 
         # 关闭摄像头
         cap.release()
-        # 2. 提取裂纹点坐标
-        start_segmented_image_upload()
+
+        # 2. 调用分割API
+        print("调用分割API处理图像...")
+        success, result = start_segmented_image_upload()
+        if not success:
+            raise RuntimeError(f"图像分割失败: {result}")
+
         image_path = "segmented_image.png"  # 分割后的图像路径
         json_path = "cracks/line_coordinates.json"  # 输出的JSON文件路径
 
         print("提取裂纹点坐标...")
-        crack_data = extract_ordered_line_coordinates(image_path, json_path, num_points=30)
+        crack_data = extract_ordered_line_coordinates(image_path, json_path, num_points=30, visualize=True)
 
         # 3. 沿着裂纹点移动机械臂
         print("开始控制机械臂沿着裂纹移动...")
-        move_along_crack(json_path, safe_height=230, speed=20, delay=0.5)
+        move_along_crack(json_path, safe_height=100, speed=25, delay=0.5)
 
         # 4. 完成后放松机械臂
-        print("任务完成，放松机械臂关节")
-        relax_arms()
+        print("任务完成，复位")
+        back_zero()
 
     except Exception as e:
         print(f"发生错误: {str(e)}")

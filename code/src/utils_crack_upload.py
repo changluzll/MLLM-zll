@@ -6,8 +6,7 @@ from alibabacloud_tea_openapi.models import Config
 from alibabacloud_tea_util.models import RuntimeOptions
 
 # 硬编码AccessKey (根据您的要求)
-access_key_id = ''
-access_key_secret = ''
+
 
 config = Config(
     access_key_id=access_key_id,
@@ -47,7 +46,6 @@ try:
     if 'Data' in result:
         print(f"- Data字段包含: {list(result['Data'].keys())}")
 
-    # 修复后的字段访问逻辑 - 使用大驼峰命名
     if isinstance(result, dict) and 'Data' in result and 'ImageURL' in result['Data']:
         image_url = result['Data']['ImageURL']
         print(f"获取到图片URL: {image_url[:80]}...")  # 显示部分URL避免过长输出

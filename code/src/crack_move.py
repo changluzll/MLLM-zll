@@ -64,7 +64,7 @@ def move_along_path(robot_points, height_safe=230, height_work=90):
 # 主函数
 def main():
     # 加载点的坐标
-    json_path = "line_coordinates.json"
+    json_path = "cracks/line_coordinates.json"
     points = load_points_from_json(json_path)
 
     # 标定参数

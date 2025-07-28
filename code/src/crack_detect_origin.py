@@ -69,6 +69,6 @@ def extract_ordered_line_coordinates(image_path, output_json_path, num_points=50
     print(f"坐标已保存到 {output_json_path}")
 
 # 示例用法
-image_path = "pic2.png"  # 替换为你的图像路径
-output_json_path = "line_coordinates.json"  # 输出的JSON文件路径
+image_path = "cracks/pic2.png"  # 替换为你的图像路径
+output_json_path = "cracks/line_coordinates.json"  # 输出的JSON文件路径
 extract_ordered_line_coordinates(image_path, output_json_path)

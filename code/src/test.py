@@ -1,189 +1,99 @@
-# utils_drag_teaching.py
-# 同济子豪兄 2024-5-23
-# 拖动示教
-
-print('导入拖动示教模块')
-
-import time
 import os
-import sys
-import termios
-import tty
-import threading
-import json
+import requests
+from alibabacloud_imageseg20191230.client import Client
+from alibabacloud_imageseg20191230.models import SegmentCommonImageAdvanceRequest
+from alibabacloud_tea_openapi.models import Config
+from alibabacloud_tea_util.models import RuntimeOptions
 
-from pymycobot import MyCobot280, PI_PORT, PI_BAUD
+# 硬编码AccessKey (根据您的要求)
+access_key_id = 'LTAI5t6RfEbFF2zDnkmkiq37'
+access_key_secret = 'dBotl7zyIa0vNpf9DELQywANURC2rm'
 
-# 连接机械臂
-mc = MyCobot280(PI_PORT, PI_BAUD, debug=False)
+config = Config(
+    access_key_id=access_key_id,
+    access_key_secret=access_key_secret,
+    endpoint='imageseg.cn-shanghai.aliyuncs.com',
+    region_id='cn-shanghai'
+)
 
-# 连接机械臂
+segment_common_image_request = SegmentCommonImageAdvanceRequest()
 
+# 处理本地图片
+image_path = 'crack.png'
+if os.path.exists(image_path):
+    stream = open(image_path, 'rb')
+    segment_common_image_request.image_urlobject = stream
+else:
+    print(f"图片文件 {image_path} 不存在，请确保文件在同一目录下。")
+    exit()
 
-class Raw(object):
-    """Set raw input mode for device"""
+segment_common_image_request.return_form = ''
 
-    def __init__(self, stream):
-        self.stream = stream
-        self.fd = self.stream.fileno()
+runtime = RuntimeOptions()
 
-    def __enter__(self):
-        self.original_stty = termios.tcgetattr(self.stream)
-        tty.setcbreak(self.stream)
+try:
+    # 初始化Client
+    client = Client(config)
+    response = client.segment_common_image_advance(segment_common_image_request, runtime)
 
-    def __exit__(self, type, value, traceback):
-        termios.tcsetattr(self.stream, termios.TCSANOW, self.original_stty)
+    # 关键修复：适应大驼峰命名字段
+    result = response.body.to_map()
+    print("返回的原始结果：")
+    print(result)
 
+    # 调试信息 - 显示实际字段结构
+    print("\n返回结果字段分析：")
+    print(f"- 顶级字段: {list(result.keys())}")
+    if 'Data' in result:
+        print(f"- Data字段包含: {list(result['Data'].keys())}")
 
-class Helper(object):
-    def __init__(self) -> None:
-        self.w, self.h = os.get_terminal_size()
+    # 修复后的字段访问逻辑 - 使用大驼峰命名
+    if isinstance(result, dict) and 'Data' in result and 'ImageURL' in result['Data']:
+        image_url = result['Data']['ImageURL']
+        print(f"获取到图片URL: {image_url[:80]}...")  # 显示部分URL避免过长输出
 
-    def echo(self, msg):
-        print("\r{}".format(" " * self.w), end="")
-        print("\r{}".format(msg), end="")
+        # 检查URL是否临时链接
+        if '?Expires=' in image_url:
+            print("检测到临时URL(2小时内有效)，立即下载...")
 
+        # 下载图片
+        try:
+            print("正在下载分割结果图片...")
+            download_response = requests.get(image_url, timeout=15)
 
-class TeachingTest(Helper):
-    def __init__(self, mycobot) -> None:
-        super().__init__()
-        self.mc = mycobot
-        self.recording = False
-        self.playing = False
-        self.record_list = []
-        self.record_t = None
-        self.play_t = None
+            if download_response.status_code == 200:
+                with open('segmented_image.png', 'wb') as f:
+                    f.write(download_response.content)
+                print("图片已成功保存到: segmented_image.png")
+            else:
+                print(f"下载失败! HTTP状态码: {download_response.status_code}")
 
-    def record(self):
-        self.record_list = []
-        self.recording = True
-        self.mc.set_fresh_mode(0)
+        except requests.Timeout:
+            print("下载超时！请检查网络或重试")
+        except Exception as download_error:
+            print(f"下载过程中发生错误: {str(download_error)}")
 
-        def _record():
-            start_t = time.time()
+    else:
+        print("\nERROR: 返回结果结构异常")
+        print("实际返回键值:", list(result.keys()))
+        if 'Data' in result:
+            print("Data字段中的键:", list(result['Data'].keys()))
 
-            while self.recording:
-                angles = self.mc.get_encoders()
-                if angles:
-                    self.record_list.append(angles)
-                    time.sleep(0.1)
-                    print("\r {}".format(time.time() - start_t), end="")
+except Exception as api_error:
+    print("\nAPI调用发生错误:")
+    print(api_error)
 
-        self.echo("开始录制动作")
-        self.record_t = threading.Thread(target=_record, daemon=True)
-        self.record_t.start()
+    # 提取详细错误信息
+    error_details = []
+    for attr in ['code', 'message', 'data']:
+        if hasattr(api_error, attr):
+            error_details.append(f"{attr}: {getattr(api_error, attr)}")
 
-    def stop_record(self):
-        if self.recording:
-            self.recording = False
-            self.record_t.join()
-            self.echo("停止录制动作")
+    if error_details:
+        print("错误详情:\n" + "\n".join(error_details))
 
-    def play(self):
-        self.echo("开始回放动作")
-        for angles in self.record_list:
-            # print(angles)
-            self.mc.set_encoders(angles, 80)
-            time.sleep(0.1)
-        self.echo("回放结束\n")
-
-    def loop_play(self):
-        self.playing = True
-
-        def _loop():
-            len_ = len(self.record_list)
-            i = 0
-            while self.playing:
-                idx_ = i % len_
-                i += 1
-                self.mc.set_encoders(self.record_list[idx_], 80)
-                time.sleep(0.1)
-
-        self.echo("开始循环回放")
-        self.play_t = threading.Thread(target=_loop, daemon=True)
-        self.play_t.start()
-
-    def stop_loop_play(self):
-        if self.playing:
-            self.playing = False
-            self.play_t.join()
-            self.echo("停止循环回放")
-
-    def save_to_local(self):
-        if not self.record_list:
-            self.echo("No data should save.")
-            return
-
-        save_path = os.path.dirname(__file__) + "/temp/record.txt"
-        with open(save_path, "w") as f:
-            json.dump(self.record_list, f, indent=2)
-            self.echo("回放动作导出至:  {}".format(save_path))
-
-    def load_from_local(self):
-
-        with open(os.path.dirname(__file__) + "/temp/record.txt", "r") as f:
-            try:
-                data = json.load(f)
-                self.record_list = data
-                self.echo("载入本地动作数据成功")
-            except Exception:
-                self.echo("Error: invalid data.")
-
-    def print_menu(self):
-        print(
-            """\
-        \r 拖动示教
-        \r q: 退出
-        \r r: 开始录制动作
-        \r c: 停止录制动作
-        \r p: 回放动作
-        \r P: 循环回放/停止循环回放
-        \r s: 将录制的动作保存到本地
-        \r l: 从本地读取录制好的动作
-        \r f: 放松机械臂
-        \r----------------------------------
-            """
-        )
-
-    def start(self):
-        self.print_menu()
-
-        while not False:
-            with Raw(sys.stdin):
-                key = sys.stdin.read(1)
-                if key == "q":
-                    break
-                elif key == "r":  # recorder
-                    self.record()
-                elif key == "c":  # stop recorder
-                    self.stop_record()
-                elif key == "p":  # play
-                    self.play()
-                elif key == "P":  # loop play
-                    if not self.playing:
-                        self.loop_play()
-                    else:
-                        self.stop_loop_play()
-                elif key == "s":  # save to local
-                    self.save_to_local()
-                elif key == "l":  # load from local
-                    self.load_from_local()
-                elif key == "f":  # free move
-                    self.mc.release_all_servos()
-                    self.echo("Released")
-                else:
-                    print(key)
-                    continue
-
-
-def drag_teach():
-    print('机械臂归零')
-    mc.send_angles([0, 0, 0, 0, 0, 0], 40)
-    time.sleep(3)
-
-    recorder = TeachingTest(mc)
-    recorder.start()
-
-    print('机械臂归零')
-    mc.send_angles([0, 0, 0, 0, 0, 0], 40)
-    time.sleep(3)
+finally:
+    # 确保关闭文件流
+    if 'stream' in locals() and stream and not stream.closed:
+        stream.close()
+        print("已关闭图片文件流")

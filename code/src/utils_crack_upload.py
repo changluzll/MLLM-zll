@@ -6,7 +6,15 @@ from alibabacloud_tea_openapi.models import Config
 from alibabacloud_tea_util.models import RuntimeOptions
 
 # 硬编码AccessKey (根据您的要求)
+access_key_id = 'LTAI5t6RfEbFF2zDnkmkiq37'
+access_key_secret = 'dBotl7zyIa0vNpf9DELQywANURC2rm'
 
+config = Config(
+    access_key_id=access_key_id,
+    access_key_secret=access_key_secret,
+    endpoint='imageseg.cn-shanghai.aliyuncs.com',
+    region_id='cn-shanghai'
+)
 
 segment_common_image_request = SegmentCommonImageAdvanceRequest()
 

@@ -250,7 +250,7 @@ def move_along_crack(json_path, safe_height=230, speed=20, delay=1.0):
     print("裂纹跟踪完成！")
 
 
-# 主程序
+# 裂缝跟随主程序
 def crack_move(PROMPT='焊接裂缝', input_way='keyboard'):
 
     try:

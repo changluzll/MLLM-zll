@@ -1,5 +1,4 @@
 # utils_vlm_move.py
-# 同济子豪兄 2025-7-15
 # 输入指令，多模态大模型识别图像，吸泵吸取并移动物体
 
 from utils_robot import *

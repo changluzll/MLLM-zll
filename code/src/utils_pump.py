@@ -1,5 +1,4 @@
 # utils_pump.py
-# 同济子豪兄 2025-7-14 更新适配官方吸泵控制
 print('导入吸泵控制模块')
 
 from gpiozero.pins.lgpio import LGPIOFactory

@@ -1,4 +1,3 @@
-#!/usr/bin/env python3
 # calibrate_cli.py
 import sys
 from utils_robot import robot, handeye

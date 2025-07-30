@@ -1,3 +1,4 @@
+# crack_move_demo2.py
 import cv2
 import numpy as np
 import json
@@ -82,32 +83,24 @@ def extract_ordered_line_coordinates(image_path, output_json_path, num_points=50
     def sort_points(points, start, end):
         """对点进行排序，从起点开始，沿着线条到终点"""
         # 计算每个点到起点的距离
-        distances_to_start = np.linalg.norm(points - start, axis=1)
+        distances = np.linalg.norm(points - start, axis=1)
 
-        # 计算每个点到终点的距离
-        distances_to_end = np.linalg.norm(points - end, axis=1)
+        # 按距离排序
+        sorted_indices = np.argsort(distances)
+        sorted_points = points[sorted_indices]
 
-        # 找到起点和终点在点集中的索引
-        start_idx = np.argmin(distances_to_start)
-        end_idx = np.argmin(distances_to_end)
+        # 确保起点是第一个点
+        start_idx = np.argmin(np.linalg.norm(sorted_points - start, axis=1))
+        if start_idx > 0:
+            sorted_points = np.roll(sorted_points, -start_idx, axis=0)
 
-        # 确保起点索引小于终点索引
-        if start_idx > end_idx:
-            # 如果起点在终点之后，反转整个点集
-            points = np.flip(points, axis=0)
-            # 重新计算索引
-            start_idx = len(points) - 1 - start_idx
-            end_idx = len(points) - 1 - end_idx
-
-        # 创建从起点到终点的连续路径
-        if start_idx < end_idx:
-            # 如果起点在终点之前，直接取两点之间的点
-            sorted_points = points[start_idx:end_idx + 1]
-        else:
-            # 如果起点在终点之后（理论上不会发生，但保留处理）
+        # 确保终点是最后一个点
+        end_idx = np.argmin(np.linalg.norm(sorted_points - end, axis=1))
+        if end_idx < len(sorted_points) - 1:
+            # 如果终点不在最后，反转后半部分点
             sorted_points = np.concatenate([
-                points[start_idx:],
-                points[:end_idx + 1]
+                sorted_points[:end_idx + 1],
+                np.flip(sorted_points[end_idx + 1:], axis=0)
             ])
 
         return sorted_points
@@ -115,18 +108,13 @@ def extract_ordered_line_coordinates(image_path, output_json_path, num_points=50
     # 应用排序算法
     sorted_points = sort_points(ordered_points, start_point, end_point)
 
-    # 确保起点和终点不重合
-    if np.array_equal(sorted_points[0], sorted_points[-1]):
-        # 如果起点和终点重合，移除最后一个点
-        sorted_points = sorted_points[:-1]
-
     # 创建JSON输出
     output = {
         "seam_path": [{"x": int(point[0]), "y": int(point[1])} for point in sorted_points],
         "start_point": {"x": int(start_point[0]), "y": int(start_point[1])},
         "end_point": {"x": int(end_point[0]), "y": int(end_point[1])},
         "image_dimensions": {"width": width, "height": height},
-        "points_count": len(sorted_points)  # 更新为实际点数
+        "points_count": num_points
     }
 
     # 确保输出目录存在
@@ -138,7 +126,7 @@ def extract_ordered_line_coordinates(image_path, output_json_path, num_points=50
 
     print(f"裂纹坐标已成功保存到 {output_json_path}")
     print(f"起点: ({start_point[0]}, {start_point[1]}), 终点: ({end_point[0]}, {end_point[1]})")
-    print(f"共 {len(sorted_points)} 个有序点")
+    print(f"共 {num_points} 个有序点")
 
     # 可视化处理 - 将点坐标标注在图像上
     if visualize:
@@ -169,7 +157,7 @@ def extract_ordered_line_coordinates(image_path, output_json_path, num_points=50
                     cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 0, 255), 1)
         cv2.putText(visual_image, "End", (end_point[0] + 10, end_point[1] - 10),
                     cv2.FONT_HERSHEY_SIMPLEX, 0.5, (255, 0, 0), 1)
-        cv2.putText(visual_image, f"Points: {len(sorted_points)}", (10, 30),
+        cv2.putText(visual_image, f"Points: {num_points}", (10, 30),
                     cv2.FONT_HERSHEY_SIMPLEX, 0.7, (255, 255, 255), 2)
 
         # 保存可视化图像
@@ -179,7 +167,7 @@ def extract_ordered_line_coordinates(image_path, output_json_path, num_points=50
 
         # 显示可视化图像（可选）
         cv2.imshow("Crack Visualization", visual_image)
-        cv2.waitKey(5000)  # 显示5秒
+        cv2.waitKey(5000)  # 显示1秒
         cv2.destroyAllWindows()
 
     return output
@@ -187,7 +175,7 @@ def extract_ordered_line_coordinates(image_path, output_json_path, num_points=50
 
 def move_along_crack(json_path, safe_height=230, speed=20, delay=1.0):
     """
-    控制机械臂沿着裂纹点坐标顺序移动
+    控制机械臂沿着裂纹点坐标顺序移动（从第二个点开始）
 
     参数:
     json_path: 包含裂纹点坐标的JSON文件路径
@@ -215,18 +203,20 @@ def move_along_crack(json_path, safe_height=230, speed=20, delay=1.0):
     # 移动到起点上方
     start_point = crack_data["start_point"]
     start_x, start_y = eye2hand(start_point["x"], start_point["y"])
-    print(f"移动到起点上方: ({start_x}, {start_y})")
-    mc.send_coords([start_x, start_y, safe_height, 0, 180, 90], speed, 0)
-    time.sleep(3)
+   # print(f"移动到起点上方: ({start_x}, {start_y})")
+    #mc.send_coords([start_x, start_y, safe_height, 0, 180, 90], speed, 0)
+    #time.sleep(3)
 
     # 移动到起点位置（降低高度）
-    print(f"移动到起点位置: ({start_x}, {start_y})")
-    mc.send_coords([start_x, start_y, safe_height - 50, 0, 180, 90], speed, 0)
-    time.sleep(2)
+    #print(f"移动到起点位置: ({start_x}, {start_y})")
+    #mc.send_coords([start_x, start_y, safe_height - 50, 0, 180, 90], speed, 0)
+    #time.sleep(2)
 
-    # 沿着裂纹点移动
-    print("开始沿着裂纹移动...")
-    for i, point in enumerate(points):
+    # 沿着裂纹点移动（从第二个点开始）
+    print("开始沿着裂纹移动（从第二个点开始）...")
+
+    # 跳过第一个点（起点），从第二个点开始
+    for i, point in enumerate(points[1:], start=1):  # 从索引1开始
         # 手眼标定转换
         x_robot, y_robot = eye2hand(point["x"], point["y"])
 
@@ -304,5 +294,4 @@ if __name__ == "__main__":
 
     except Exception as e:
         print(f"发生错误: {str(e)}")
-        print("放松机械臂关节")
-        relax_arms()
+        back_zero()

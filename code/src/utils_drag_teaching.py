@@ -1,5 +1,4 @@
 # utils_drag_teaching.py
-# 同济子豪兄 2025-07-14 更新适配 MyCobot280 官方 API
 print('导入拖动示教模块')
 
 import time

@@ -1,3 +1,4 @@
+#test_script2.py
 import cv2, json
 from utils_robot import mc, top_view_shot
 

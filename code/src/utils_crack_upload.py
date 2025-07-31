@@ -5,7 +5,7 @@ from alibabacloud_imageseg20191230.client import Client
 from alibabacloud_imageseg20191230.models import SegmentCommonImageAdvanceRequest
 from alibabacloud_tea_openapi.models import Config
 from alibabacloud_tea_util.models import RuntimeOptions
-
+from API_KEY import*
 
 def start_segmented_image_upload():
     """
@@ -16,9 +16,8 @@ def start_segmented_image_upload():
         str: 成功时返回图像路径，失败时返回错误信息
     """
     # 配置阿里云API访问密钥
-    access_key_id = 'LTAI5t6RfEbFF2zDnkmkiq37'
-    access_key_secret = 'dBotl7zyIa0vNpf9DELQywANURC2rm'
-
+    access_key_id = ALIYUN_ACCESS_KEY
+    access_key_secret = ALIYUN_SECRET_KEY
     config = Config(
         access_key_id=access_key_id,
         access_key_secret=access_key_secret,

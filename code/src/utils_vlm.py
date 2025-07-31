@@ -97,10 +97,12 @@ def QwenVL_api(prompt='帮我把红色方块放在钢笔上',
     return: dict，如 {"start":"...","start_xyxy":[...], ...}
     """
 
-    if vlm_option == 0:
-        system = SYSTEM_PROMPT_CATCH
-    else:
-        system = SYSTEM_PROMPT_VQA
+    if vlm_option==0:
+        system=SYSTEM_PROMPT_CATCH
+    if vlm_option==1:
+        system=SYSTEM_PROMPT_VQA
+    if vlm_option==2:
+        system=SYSTEM_PROMPT_CATCHTOME
 
     client = openai.OpenAI(
         api_key="sk-39e69b06c77440eaa7a1be063b42a520",

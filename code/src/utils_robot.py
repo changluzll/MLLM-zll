@@ -197,3 +197,46 @@ def pump_move(mc,
     print('    机械臂归零')
     mc.send_angles([0, 0, 0, 0, 0, 0], 40)
     time.sleep(1)
+def pump_movetome(mc,
+              XY_START=[230, -50],
+              HEIGHT_START=90,
+              XY_END=[100, 220],
+              HEIGHT_END=250,
+              HEIGHT_SAFE=250):
+    ...
+
+    # 设置运动模式为队列模式(0)
+    mc.set_fresh_mode(0)
+
+    # 吸泵移动至物体上方
+    print('    吸泵移动至物体上方')
+    mc.send_coords([XY_START[0], XY_START[1], HEIGHT_SAFE, 0, 180, 90], 20, 0)
+    time.sleep(4)
+
+    # 开启吸泵
+    pump_on()
+
+    # 吸泵向下吸取物体
+
+    print('    吸泵向下吸取物体')
+    mc.send_coords([XY_START[0], XY_START[1], 75, 0, 180, 90], 15, 0)
+    time.sleep(2)
+
+    # 升起物体
+    print('    升起物体')
+    mc.send_coords([XY_START[0], XY_START[1], HEIGHT_SAFE, 0, 180, 90], 20, 0)
+    time.sleep(4)
+
+    # 搬运物体
+    print('    搬运物体')
+    mc.send_coords([XY_END[0], XY_END[1], HEIGHT_SAFE, -90, 50, -80], 20, 0)
+    time.sleep(10)
+
+
+
+    # 机械臂归零
+    print('    机械臂归零')
+    mc.send_angles([0, 0, 0, 0, 0, 0], 40)
+    time.sleep(1)
+    # 关闭吸泵
+    pump_off()
